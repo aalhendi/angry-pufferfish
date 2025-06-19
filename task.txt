@@ -1,0 +1,31 @@
+Integration Developer Task
+
+Assume you are in an agile team, and you are assigned to set up 2 co-dependent microservices, one responsible for the management of bank customers,
+and the other responsible for management of customer accounts, the following requirements are given.
+
+Task Request Logic as below:
+    1. A customer must have a name, associated legal id, type, and address (add any other information you feel is relevant).
+    2. A customer may have 0 or more accounts.
+    3. Customer can have the following types: retail, corporate, investment.
+    4. Accounts at minimum must have a balance, account status.
+    5. All must be stored in a relational DB (you are free to choose any DB)
+    6. The spring boot project follows a proper code structure.
+    7. The Rest APIs must follow the Open API Specification standard.
+    8. Proper validation in the API request/response, and DB.
+        i. Customer ID should be 7 digits.
+        ii. Account should be 10 digits starting with the customer ID as the starting 7.
+        iii. A customer can have up to 10 accounts.
+        iv. One account can be a salary account, and the rest can be saving or investment.
+Technical Spec:
+    1. Task should be completed in latest stable spring-boot using Java 17+. You will be graded based on the application of latest features of the versions you use.
+    2. VCS is required.
+    3. Maven or Gradle project is required.
+    4. Proper error/exception handling
+    5. Proper logging
+    6. Access to DB should be through Spring Data JPA.
+    7. It is essential to follow TDD and include Unit testing of your code with coverage report (min 70% coverage expected)
+    8. In addition to Rest APIs setup events for each service to fulfill an EDA between the two services.
+    9. Produce a Readme.md that includes your design decisions, shortcomings, and assumptions.
+Bonus:
+    • Demonstrate understanding of Spring Security.
+    • Demonstrate understanding & usage of Spring profiles.
