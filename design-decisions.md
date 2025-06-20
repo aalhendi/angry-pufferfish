@@ -9,10 +9,12 @@ There are a couple of popular patterns for EDA.
   - decoupled & simple but no guaranteed delivery is a no-go for anything financial
 - Event notification
   - emit (scream) events when state changes. other services react if they care
-  - also simple and easy debugging but no history for changes
+  - also simple and easy debugging but no history for changes, also no guaranteed delivery
 - Event Sourcing
   - all changes are immutable events, can rebuild state via replays 
   - this would probably be ideal. nice audit trails.
+  - failures will be on same MS, so we just roll back DB and log the error. send it to DLQ
+  - idempotent events. or use sets rather than path
 - CQRS
   - split read/write models
   - probably overkill for demo. perf here is unmatched.
@@ -29,4 +31,14 @@ There are a couple of popular patterns for EDA.
   - webhooks essentially. (or other events)
   - nice to integrate with rest but not so "pure"
 
-I think if i can get event-sourcing done in time ill go with it. if not, saga for transfers at least
+Going to do event sourcing. We can mix and match later.
+
+## DB Table Stuff
+
+- Primary Key selection. Customer ID as PK vs a standard PK (UUIDv7 / TypeID) + a `customer_id` field. pagination
+- PK is always called `tablename_id`. I like easy debugging
+- no enums in db for now (account status). discuss normalization.
+- no `deleted_at` column.
+- we are not doing federated foreign keys :) (tight coupling and breaks autonomy of microservice. which is the whole point of having a microservice)
+- VARCHAR(10) vs numeric (int) type for account number and customer id.
+- ON UPDATE RESTRICT and ON DELETE CASCADE

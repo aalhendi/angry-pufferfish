@@ -1,8 +1,6 @@
 # TODO
 
 - Establish an `ARCHITECTURE.md` file.
-- Decide on an EDA pattern. probably start with event notif and then expand if needed.
-  - Based on that, decide on if/what message queue / broker [for the 2 services we have :)]
 - Public APIs have to be REST by spec, but services are co-dependent... Maybe gRPC internally?
   - gRPC for internal messaging
   - OpenFeign for public. turns out its just a declarative thing that integrates p well with spring. will have to explore a little more
@@ -17,4 +15,12 @@
   - grpc can round-robin as policy
 - write docs that pass https://en.wikipedia.org/wiki/Bus_factor
 - TDD? best way to show this would probably be a commit with tests (failing), then another commit with tests passing
-- No CI/CD... im pretty sure anyone can write GH Actions or Jenkins/Argo pipeline. 
+- No CI/CD... im pretty sure anyone can write GH Actions or Jenkins/Argo pipeline.
+
+
+## Immediate
+- Write migrations to init db tables for both microservices
+- make containers that spin up the DB instance (how many DBs do we want to support?)
+- Make 2 profiles. One that runs the migrations automatically, and one that just runs.
+- define models in the microservices (eventually)
+- 
