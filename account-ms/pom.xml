@@ -159,6 +159,8 @@
 
 	<build>
 		<plugins>
+			<!-- TODO(aalhendi): Enable when we add gRPC services -->
+			<!--
 			<plugin>
 				<groupId>io.github.ascopes</groupId>
 				<artifactId>protobuf-maven-plugin</artifactId>
@@ -183,6 +185,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			-->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

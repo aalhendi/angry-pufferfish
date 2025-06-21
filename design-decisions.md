@@ -35,6 +35,7 @@ Going to do event sourcing. We can mix and match later.
 
 ## DB Table Stuff
 
+- Opting for a Single PostgreSQL instance with multiple databases. We aim for logical seperation not server farm.
 - Primary Key selection. Customer ID as PK vs a standard PK (UUIDv7 / TypeID) + a `customer_id` field. pagination
 - PK is always called `tablename_id`. I like easy debugging
 - no enums in db for now (account status). discuss normalization.
