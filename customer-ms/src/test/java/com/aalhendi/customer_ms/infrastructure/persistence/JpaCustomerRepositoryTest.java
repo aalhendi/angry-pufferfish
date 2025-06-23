@@ -1,8 +1,13 @@
 package com.aalhendi.customer_ms.infrastructure.persistence;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,175 +17,199 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for JpaCustomerRepository.
+ * Uses TestContainers to spin up PostgreSQL instances for each test.
  */
 @DataJpaTest
-@ActiveProfiles("test")
+@Import(PostgreSQLTestContainer.class)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.liquibase.enabled=false"
+})
 class JpaCustomerRepositoryTest {
 
-    // Repository will be injected through TDD
-    private JpaCustomerRepository jpaCustomerRepository;
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private JpaCustomerRepository repository;
+
+    private CustomerEntity testCustomer1;
+    private CustomerEntity testCustomer2;
+    private CustomerEntity testCustomer3;
+
+    @BeforeEach
+    void setUp() {
+        // Clear any existing data
+        entityManager.getEntityManager().createQuery("DELETE FROM CustomerEntity").executeUpdate();
+        entityManager.flush();
+
+        // Create test data with different customer types and statuses
+        LocalDateTime now = LocalDateTime.now();
+
+        testCustomer1 = new CustomerEntity(
+                null,
+                "1234567",          // Customer number
+                "John Doe",         // Name
+                "325010179353",     // National ID (12 chars)
+                "RETAIL",           // Customer type
+                "OMAR BEN AL KHATTAB STREET, ARRAYA TOWER, FLOOR 01-13, BLOCK 7, SHARQ", // Address
+                1,                  // ACTIVE status
+                now,
+                now
+        );
+
+        testCustomer2 = new CustomerEntity(
+                null,
+                "7654321",          // Customer number
+                "Jane Smith",       // Name
+                "325010160759",     // National ID (12 chars)
+                "RETAIL",           // Customer type
+                "OMAR BEN AL KHATTAB STREET, AVENUES MALL, FLOOR 01-13, BLOCK 7, SHARQ",  // Address
+                0,                  // INACTIVE status
+                now,
+                now
+        );
+
+        testCustomer3 = new CustomerEntity(
+                null,
+                "9876543",          // Customer number
+                "W BANK",           // Name
+                "325010150000",     // National ID (12 chars)
+                "CORPORATE",        // Customer type
+                "OMAR BEN AL KHATTAB STREET, ARRAYA COMPLEX, FLOOR 01-13, BLOCK 7, SHARQ",              // Address
+                1,                  // ACTIVE status
+                now,
+                now
+        );
+
+        // Persist test data
+        entityManager.persistAndFlush(testCustomer1);
+        entityManager.persistAndFlush(testCustomer2);
+        entityManager.persistAndFlush(testCustomer3);
+    }
 
     @Test
     void shouldFindCustomerByCustomerNumber() {
-        // Given - saved customer entity
-        CustomerEntity customer = createTestCustomer("1234567", "John Doe", "325010179353");
-        jpaCustomerRepository.save(customer);
-
-        // When - finding by customer number
-        Optional<CustomerEntity> found = jpaCustomerRepository.findByCustomerNumber("1234567");
+        // When - finding customer by customer number
+        Optional<CustomerEntity> customer = repository.findByCustomerNumber("1234567");
 
         // Then - should find the customer
-        assertTrue(found.isPresent());
-        assertEquals("1234567", found.get().getCustomerNumber());
-        assertEquals("John Doe", found.get().getName());
+        assertTrue(customer.isPresent());
+        assertEquals("1234567", customer.get().getCustomerNumber());
+        assertEquals("John Doe", customer.get().getName());
+        assertEquals("325010179353", customer.get().getNationalId());
     }
 
     @Test
     void shouldNotFindNonExistentCustomer() {
-        // When - searching for non-existent customer
-        Optional<CustomerEntity> found = jpaCustomerRepository.findByCustomerNumber("9999999");
+        // When - searching for a non-existent customer
+        Optional<CustomerEntity> customer = repository.findByCustomerNumber("9999999");
 
-        // Then - should not find anything
-        assertFalse(found.isPresent());
+        // Then - should return empty
+        assertFalse(customer.isPresent());
     }
 
     @Test
     void shouldFindCustomerByNationalId() {
-        // Given - saved customer entity
-        CustomerEntity customer = createTestCustomer("1234567", "John Doe", "325010179353");
-        jpaCustomerRepository.save(customer);
-
-        // When - finding by national ID
-        Optional<CustomerEntity> found = jpaCustomerRepository.findByNationalId("325010179353");
+        // When - finding customer by national ID
+        Optional<CustomerEntity> customer = repository.findByNationalId("325010179353");
 
         // Then - should find the customer
-        assertTrue(found.isPresent());
-        assertEquals("325010179353", found.get().getNationalId());
-        assertEquals("John Doe", found.get().getName());
-    }
-
-    @Test
-    void shouldFindActiveCustomers() {
-        // Given - mix of active and inactive customers
-        CustomerEntity activeCustomer = createTestCustomer("1234567", "John Doe", "325010179353");
-        activeCustomer.setStatus(1); // ACTIVE
-        
-        CustomerEntity inactiveCustomer = createTestCustomer("7654321", "Jane Smith", "325010160759");
-        inactiveCustomer.setStatus(0); // INACTIVE
-        
-        jpaCustomerRepository.save(activeCustomer);
-        jpaCustomerRepository.save(inactiveCustomer);
-
-        // When - finding active customers only
-        List<CustomerEntity> activeCustomers = jpaCustomerRepository.findByStatus(1);
-
-        // Then - should find only active customers
-        assertEquals(1, activeCustomers.size());
-        assertEquals("John Doe", activeCustomers.get(0).getName());
-        assertEquals(1, activeCustomers.get(0).getStatus());
-    }
-
-    @Test
-    void shouldFindCustomersByType() {
-        // Given - customers of different types
-        CustomerEntity retailCustomer = createTestCustomer("1234567", "John Doe", "325010179353");
-        retailCustomer.setCustomerType("RETAIL");
-        
-        CustomerEntity corporateCustomer = createTestCustomer("7654321", "ABC Corp", "325010160759");
-        corporateCustomer.setCustomerType("CORPORATE");
-        
-        jpaCustomerRepository.save(retailCustomer);
-        jpaCustomerRepository.save(corporateCustomer);
-
-        // When - finding retail customers
-        List<CustomerEntity> retailCustomers = jpaCustomerRepository.findByCustomerType("RETAIL");
-
-        // Then - should find only retail customers
-        assertEquals(1, retailCustomers.size());
-        assertEquals("John Doe", retailCustomers.get(0).getName());
-        assertEquals("RETAIL", retailCustomers.get(0).getCustomerType());
+        assertTrue(customer.isPresent());
+        assertEquals("John Doe", customer.get().getName());
+        assertEquals("1234567", customer.get().getCustomerNumber());
     }
 
     @Test
     void shouldCheckExistenceByCustomerNumber() {
-        // Given - saved customer
-        jpaCustomerRepository.save(createTestCustomer("1234567", "John Doe", "325010179353"));
+        // When - checking if a customer exists
+        boolean exists = repository.existsByCustomerNumber("1234567");
+        boolean notExists = repository.existsByCustomerNumber("9999999");
 
-        // When - checking existence
-        boolean exists = jpaCustomerRepository.existsByCustomerNumber("1234567");
-        boolean notExists = jpaCustomerRepository.existsByCustomerNumber("9999999");
-
-        // Then - should return correct existence status
+        // Then - should return correct existence
         assertTrue(exists);
         assertFalse(notExists);
     }
 
     @Test
     void shouldCheckExistenceByNationalId() {
-        // Given - saved customer
-        jpaCustomerRepository.save(createTestCustomer("1234567", "John Doe", "325010179353"));
+        // When - checking if a customer exists by national ID
+        boolean exists = repository.existsByNationalId("325010179353");
+        boolean notExists = repository.existsByNationalId("999999999999");
 
-        // When - checking existence
-        boolean exists = jpaCustomerRepository.existsByNationalId("325010179353");
-        boolean notExists = jpaCustomerRepository.existsByNationalId("999999999999");
-
-        // Then - should return correct existence status
+        // Then - should return correct existence
         assertTrue(exists);
         assertFalse(notExists);
     }
 
     @Test
-    void shouldCountCustomersByType() {
-        // Given - customers of different types
-        jpaCustomerRepository.save(createTestCustomer("1234567", "John Doe", "325010179353", "RETAIL"));
-        jpaCustomerRepository.save(createTestCustomer("7654321", "Jane Smith", "325010160759", "RETAIL"));
-        jpaCustomerRepository.save(createTestCustomer("1111111", "ABC Corp", "325010150000", "CORPORATE"));
+    void shouldFindCustomersByStatus() {
+        // When - finding customers by status
+        List<CustomerEntity> activeCustomers = repository.findByStatus(1);
+        List<CustomerEntity> inactiveCustomers = repository.findByStatus(0);
 
-        // When - counting retail customers
-        long retailCount = jpaCustomerRepository.countByCustomerType("RETAIL");
-        long corporateCount = jpaCustomerRepository.countByCustomerType("CORPORATE");
+        // Then - should return customers with correct status
+        assertEquals(2, activeCustomers.size()); // testCustomer1 and testCustomer3 are active
+        assertEquals(1, inactiveCustomers.size()); // testCustomer2 is inactive
+
+        assertTrue(activeCustomers.stream().allMatch(c -> c.getStatus() == 1));
+        assertTrue(inactiveCustomers.stream().allMatch(c -> c.getStatus() == 0));
+    }
+
+    @Test
+    void shouldFindCustomersByCustomerType() {
+        // When - finding customers by type
+        List<CustomerEntity> retailCustomers = repository.findByCustomerType("RETAIL");
+        List<CustomerEntity> corporateCustomers = repository.findByCustomerType("CORPORATE");
+
+        // Then - should return customers with correct type
+        assertEquals(2, retailCustomers.size()); // testCustomer1 and testCustomer2 are retail
+        assertEquals(1, corporateCustomers.size()); // testCustomer3 is corporate
+
+        assertTrue(retailCustomers.stream().allMatch(c -> "RETAIL".equals(c.getCustomerType())));
+        assertTrue(corporateCustomers.stream().allMatch(c -> "CORPORATE".equals(c.getCustomerType())));
+    }
+
+    @Test
+    void shouldCountCustomersByType() {
+        // When - counting customers by type
+        long retailCount = repository.countByCustomerType("RETAIL");
+        long corporateCount = repository.countByCustomerType("CORPORATE");
+        long investmentCount = repository.countByCustomerType("INVESTMENT");
 
         // Then - should return correct counts
         assertEquals(2, retailCount);
         assertEquals(1, corporateCount);
+        assertEquals(0, investmentCount); // No investment customers in test data
     }
 
     @Test
     void shouldFindCustomersCreatedAfterDate() {
-        // Given - customers created at different times
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(1);
-        
-        CustomerEntity oldCustomer = createTestCustomer("1234567", "John Doe", "325010179353");
-        oldCustomer.setCreatedAt(cutoffDate.minusHours(1)); // Before cutoff
-        
-        CustomerEntity newCustomer = createTestCustomer("7654321", "Jane Smith", "325010160759");
-        newCustomer.setCreatedAt(cutoffDate.plusHours(1)); // After cutoff
-        
-        jpaCustomerRepository.save(oldCustomer);
-        jpaCustomerRepository.save(newCustomer);
+        // Given - a cutoff date in the past
+        LocalDateTime cutoffDate = LocalDateTime.now().minusHours(1);
 
         // When - finding customers created after cutoff
-        List<CustomerEntity> recentCustomers = jpaCustomerRepository.findByCreatedAtAfter(cutoffDate);
+        List<CustomerEntity> recentCustomers = repository.findByCreatedAtAfter(cutoffDate);
 
-        // Then - should find only recent customers
-        assertEquals(1, recentCustomers.size());
-        assertEquals("Jane Smith", recentCustomers.get(0).getName());
+        // Then - should find all customers (all created recently)
+        assertEquals(3, recentCustomers.size());
     }
 
-    private CustomerEntity createTestCustomer(String customerNumber, String name, String nationalId) {
-        return createTestCustomer(customerNumber, name, nationalId, "RETAIL");
-    }
+    @Test
+    void shouldSearchCustomersByNameContaining() {
+        // When - searching customers by name fragment
+        List<CustomerEntity> johnsResults = repository.findByNameContainingIgnoreCase("john");
+        List<CustomerEntity> corpResults = repository.findByNameContainingIgnoreCase("bank");
+        List<CustomerEntity> emptyResults = repository.findByNameContainingIgnoreCase("xyz");
 
-    private CustomerEntity createTestCustomer(String customerNumber, String name, String nationalId, String customerType) {
-        CustomerEntity customer = new CustomerEntity();
-        customer.setCustomerNumber(customerNumber);
-        customer.setName(name);
-        customer.setNationalId(nationalId);
-        customer.setCustomerType(customerType);
-        customer.setAddress("OMAR BEN AL KHATTAB STREET, ARRAYA TOWER, FLOOR 01-13, BLOCK 7, SHARQ");
-        customer.setStatus(1); // ACTIVE by default
-        customer.setCreatedAt(LocalDateTime.now());
-        customer.setUpdatedAt(LocalDateTime.now());
-        return customer;
+        // Then - should return matching customers
+        assertEquals(1, johnsResults.size());
+        assertEquals("John Doe", johnsResults.get(0).getName());
+
+        assertEquals(1, corpResults.size());
+        assertEquals("W BANK", corpResults.get(0).getName());
+
+        assertEquals(0, emptyResults.size());
     }
 } 

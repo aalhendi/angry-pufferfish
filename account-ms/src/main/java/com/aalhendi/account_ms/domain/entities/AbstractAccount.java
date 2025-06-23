@@ -20,7 +20,7 @@ public abstract sealed class AbstractAccount permits Account, NewAccount {
     private LocalDateTime updatedAt;
 
     /**
-     * Private constructor for creating accounts.
+     * Protected constructor for creating accounts.
      */
     protected AbstractAccount(AccountNumber accountNumber, Balance balance, AccountStatus status,
                               LocalDateTime createdAt, LocalDateTime updatedAt) {
