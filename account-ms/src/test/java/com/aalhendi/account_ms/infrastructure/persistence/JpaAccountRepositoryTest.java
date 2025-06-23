@@ -1,8 +1,13 @@
 package com.aalhendi.account_ms.infrastructure.persistence;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,128 +18,147 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for JpaAccountRepository.
+ * Uses TestContainers to spin up PostgreSQL instances for each test.
  */
 @DataJpaTest
-@ActiveProfiles("test")
+@Import(PostgreSQLTestContainer.class)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestPropertySource(properties = {
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.liquibase.enabled=false"
+})
 class JpaAccountRepositoryTest {
 
-    // Repository will be injected through TDD
-    private JpaAccountRepository jpaAccountRepository;
+    @Autowired
+    private TestEntityManager entityManager;
 
-    @Test
-    void shouldFindAccountByAccountNumber() {
-        // Given - saved account entity
-        AccountEntity account = createTestAccount("1234567001", new BigDecimal("100.00"));
-        jpaAccountRepository.save(account);
+    @Autowired
+    private JpaAccountRepository repository;
 
-        // When - finding by account number
-        Optional<AccountEntity> found = jpaAccountRepository.findByAccountNumber("1234567001");
+    @BeforeEach
+    void setUp() {
+        // Clear any existing data
+        entityManager.getEntityManager().createQuery("DELETE FROM AccountEntity").executeUpdate();
+        entityManager.flush();
+        
+        // Create test data with different customers and statuses
+        LocalDateTime now = LocalDateTime.now();
 
-        // Then - should find the account
-        assertTrue(found.isPresent());
-        assertEquals("1234567001", found.get().getAccountNumber());
-    }
+        // Customer 1234567, Account 001
+        // ACTIVE
+        AccountEntity testAccount1 = new AccountEntity(
+                null,
+                "1234567001",  // Customer 1234567, Account 001
+                new BigDecimal("100.000"),
+                1,  // ACTIVE
+                now,
+                now
+        );
 
-    @Test
-    void shouldNotFindNonExistentAccount() {
-        // When - searching for non-existent account
-        Optional<AccountEntity> found = jpaAccountRepository.findByAccountNumber("9999999999");
+        // Customer 1234567, Account 002
+        // PENDING
+        AccountEntity testAccount2 = new AccountEntity(
+                null,
+                "1234567002",  // Customer 1234567, Account 002
+                new BigDecimal("250.500"),
+                0,  // PENDING
+                now,
+                now
+        );
 
-        // Then - should not find anything
-        assertFalse(found.isPresent());
+        // Customer 7654321, Account 001
+        // ACTIVE
+        AccountEntity testAccount3 = new AccountEntity(
+                null,
+                "7654321001",  // Customer 7654321, Account 001
+                new BigDecimal("500.750"),
+                1,  // ACTIVE
+                now,
+                now
+        );
+
+        // Persist test data
+        entityManager.persistAndFlush(testAccount1);
+        entityManager.persistAndFlush(testAccount2);
+        entityManager.persistAndFlush(testAccount3);
     }
 
     @Test
     void shouldFindAccountsByCustomerNumber() {
-        // Given - multiple accounts for same customer
-        AccountEntity account1 = createTestAccount("1234567001", new BigDecimal("100.00"));
-        AccountEntity account2 = createTestAccount("1234567002", new BigDecimal("200.00"));
-        AccountEntity account3 = createTestAccount("7654321001", new BigDecimal("300.00"));
+        // When - finding accounts for customer 1234567
+        List<AccountEntity> accounts = repository.findByCustomerNumber("1234567");
         
-        jpaAccountRepository.save(account1);
-        jpaAccountRepository.save(account2);
-        jpaAccountRepository.save(account3);
-
-        // When - finding by customer number
-        List<AccountEntity> accounts = jpaAccountRepository.findByCustomerNumber("1234567");
-
-        // Then - should find customer's accounts only
+        // Then - should return 2 accounts for this customer
         assertEquals(2, accounts.size());
-        assertTrue(accounts.stream().allMatch(acc -> acc.getAccountNumber().startsWith("1234567")));
-    }
-
-    @Test
-    void shouldFindActiveAccountsByCustomerNumber() {
-        // Given - mix of active and inactive accounts
-        AccountEntity activeAccount = createTestAccount("1234567001", new BigDecimal("100.00"));
-        activeAccount.setStatus(1); // ACTIVE
-        
-        AccountEntity inactiveAccount = createTestAccount("1234567002", new BigDecimal("200.00"));
-        inactiveAccount.setStatus(0); // INACTIVE
-        
-        jpaAccountRepository.save(activeAccount);
-        jpaAccountRepository.save(inactiveAccount);
-
-        // When - finding active accounts only
-        List<AccountEntity> activeAccounts = jpaAccountRepository.findActiveAccountsByCustomerNumber("1234567");
-
-        // Then - should find only active accounts
-        assertEquals(1, activeAccounts.size());
-        assertEquals(1, activeAccounts.get(0).getStatus());
+        assertTrue(accounts.stream().anyMatch(a -> a.getAccountNumber().equals("1234567001")));
+        assertTrue(accounts.stream().anyMatch(a -> a.getAccountNumber().equals("1234567002")));
     }
 
     @Test
     void shouldCountAccountsByCustomerNumber() {
-        // Given - multiple accounts for customer
-        jpaAccountRepository.save(createTestAccount("1234567001", new BigDecimal("100.00")));
-        jpaAccountRepository.save(createTestAccount("1234567002", new BigDecimal("200.00")));
-        jpaAccountRepository.save(createTestAccount("7654321001", new BigDecimal("300.00")));
-
-        // When - counting customer accounts
-        long count = jpaAccountRepository.countByCustomerNumber("1234567");
-
-        // Then - should return correct count
+        // When - counting accounts for customer 1234567
+        long count = repository.countByCustomerNumber("1234567");
+        
+        // Then - should return 2
         assertEquals(2, count);
+        
+        // When - counting accounts for customer 7654321
+        long singleCount = repository.countByCustomerNumber("7654321");
+        
+        // Then - should return 1
+        assertEquals(1, singleCount);
+    }
+
+    @Test
+    void shouldFindAccountByAccountNumber() {
+        // When - finding an account by specific account number
+        Optional<AccountEntity> account = repository.findByAccountNumber("1234567001");
+        
+        // Then - should find the account
+        assertTrue(account.isPresent());
+        assertEquals("1234567001", account.get().getAccountNumber());
+        assertEquals(new BigDecimal("100.000"), account.get().getBalance());
+    }
+
+    @Test
+    void shouldNotFindNonExistentAccount() {
+        // When - searching for a non-existent account
+        Optional<AccountEntity> account = repository.findByAccountNumber("9999999999");
+        
+        // Then - should return empty
+        assertFalse(account.isPresent());
     }
 
     @Test
     void shouldCheckExistenceByAccountNumber() {
-        // Given - saved account
-        jpaAccountRepository.save(createTestAccount("1234567001", new BigDecimal("100.00")));
-
-        // When - checking existence
-        boolean exists = jpaAccountRepository.existsByAccountNumber("1234567001");
-        boolean notExists = jpaAccountRepository.existsByAccountNumber("9999999999");
-
-        // Then - should return correct existence status
+        // When - checking if an account exists
+        boolean exists = repository.existsByAccountNumber("1234567001");
+        boolean notExists = repository.existsByAccountNumber("9999999999");
+        
+        // Then - should return correct existence
         assertTrue(exists);
         assertFalse(notExists);
     }
 
     @Test
-    void shouldFindExistingSerialNumbers() {
-        // Given - accounts with serial numbers
-        jpaAccountRepository.save(createTestAccount("1234567001", new BigDecimal("100.00")));
-        jpaAccountRepository.save(createTestAccount("1234567003", new BigDecimal("200.00")));
-        jpaAccountRepository.save(createTestAccount("1234567005", new BigDecimal("300.00")));
-
-        // When - finding existing serials
-        List<String> serials = jpaAccountRepository.findExistingSerialNumbers("1234567");
-
-        // Then - should return serial numbers only
-        assertEquals(3, serials.size());
-        assertTrue(serials.contains("001"));
-        assertTrue(serials.contains("003"));
-        assertTrue(serials.contains("005"));
+    void shouldFindActiveAccountsByCustomerNumber() {
+        // When - finding active accounts for customer 1234567
+        List<AccountEntity> activeAccounts = repository.findByCustomerNumberAndStatus("1234567", 1);
+        
+        // Then - should return only the active account
+        assertEquals(1, activeAccounts.size());
+        assertEquals("1234567001", activeAccounts.getFirst().getAccountNumber());
+        assertEquals(Integer.valueOf(1), activeAccounts.getFirst().getStatus());
     }
 
-    private AccountEntity createTestAccount(String accountNumber, BigDecimal balance) {
-        AccountEntity account = new AccountEntity();
-        account.setAccountNumber(accountNumber);
-        account.setBalance(balance);
-        account.setStatus(1); // ACTIVE
-        account.setCreatedAt(LocalDateTime.now());
-        account.setUpdatedAt(LocalDateTime.now());
-        return account;
+    @Test
+    void shouldFindExistingSerialNumbers() {
+        // When - finding existing serial numbers for customer 1234567
+        List<String> serialNumbers = repository.findExistingSerialNumbers("1234567");
+        
+        // Then - should return existing serial numbers
+        assertEquals(2, serialNumbers.size());
+        assertTrue(serialNumbers.contains("001"));
+        assertTrue(serialNumbers.contains("002"));
     }
 } 

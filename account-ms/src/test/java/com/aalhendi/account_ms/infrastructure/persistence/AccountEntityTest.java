@@ -1,5 +1,10 @@
 package com.aalhendi.account_ms.infrastructure.persistence;
 
+import com.aalhendi.account_ms.domain.entities.Account;
+import com.aalhendi.account_ms.domain.entities.NewAccount;
+import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
+import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
+import com.aalhendi.account_ms.domain.valueobjects.Balance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -45,99 +50,63 @@ class AccountEntityTest {
     }
 
     @Test
-    void shouldHandleNullableDeletedAt() {
-        // Given - entity without deleted timestamp
-        accountEntity.setDeletedAt(null);
+    void shouldCreateEntityFromConstructor() {
+        // Given - entity data
+        String accountNumber = "1234567001";
+        BigDecimal balance = new BigDecimal("250.750");
+        Integer status = 1; // ACTIVE
+        LocalDateTime createdAt = testTime;
+        LocalDateTime updatedAt = testTime;
 
-        // Then - should handle null gracefully
-        assertNull(accountEntity.getDeletedAt());
+        // When - creating an entity from constructor
+        AccountEntity entity = new AccountEntity(null, accountNumber, balance, status, createdAt, updatedAt);
 
-        // When - setting deleted timestamp
-        accountEntity.setDeletedAt(testTime);
-
-        // Then - should store the timestamp
-        assertEquals(testTime, accountEntity.getDeletedAt());
+        // Then - should have correct properties
+        assertEquals(accountNumber, entity.getAccountNumber());
+        assertEquals(balance, entity.getBalance());
+        assertEquals(status, entity.getStatus());
+        assertEquals(createdAt, entity.getCreatedAt());
+        assertEquals(updatedAt, entity.getUpdatedAt());
     }
 
     @Test
-    void shouldConvertFromDomainAccount() {
-        // Given - a domain account
-        AccountNumber accountNumber = AccountNumber.of("1234567001");
-        Balance balance = Balance.of("250.750");
-        AccountStatus status = AccountStatus.ACTIVE;
-        
-        Account domainAccount = Account.reconstitute(
-            1L, accountNumber, balance, status, testTime, testTime, null
-        );
+    void shouldCreateFromDomainObject() {
+        // Given - domain object
+        NewAccount newAccount = NewAccount.create(new AccountNumber("1234567001"));
+        // We would need to "save" the newAccount to get an Account. We don't have a DB, so we will cheat.
+        Account account = Account.reconstitute(1L,
+                newAccount.getAccountNumber(),
+                newAccount.getBalance(),
+                newAccount.getStatus(),
+                newAccount.getCreatedAt(),
+                newAccount.getUpdatedAt());
+        account.activate(); // Activate first
+        account.credit(new Balance("500.000")); // Then credit
 
-        // When - converting from domain
-        AccountEntity entity = AccountEntity.fromDomain(domainAccount);
+        // When - creating entity from domain
+        AccountEntity entity = AccountEntity.fromDomain(account);
 
-        // Then - entity should have correct values
-        assertEquals(1L, entity.getId());
+        // Then - should match domain properties
         assertEquals("1234567001", entity.getAccountNumber());
-        assertEquals(new BigDecimal("250.750"), entity.getBalance());
+        assertEquals(new BigDecimal("500.000"), entity.getBalance());
         assertEquals(AccountStatus.ACTIVE.getCode(), entity.getStatus());
-        assertEquals(testTime, entity.getCreatedAt());
-        assertEquals(testTime, entity.getUpdatedAt());
-        assertNull(entity.getDeletedAt());
+        assertNotNull(entity.getCreatedAt());
+        assertNotNull(entity.getUpdatedAt());
     }
 
     @Test
-    void shouldConvertToDomainAccount() {
-        // Given - an entity with data
-        accountEntity.setId(2L);
-        accountEntity.setAccountNumber("7654321005");
-        accountEntity.setBalance(new BigDecimal("1000.000"));
-        accountEntity.setStatus(AccountStatus.PENDING.getCode());
-        accountEntity.setCreatedAt(testTime);
-        accountEntity.setUpdatedAt(testTime);
-        accountEntity.setDeletedAt(null);
+    void shouldUpdateTimestampWithTouch() {
+        // Given - entity with old timestamp
+        LocalDateTime oldTime = testTime.minusHours(1);
+        accountEntity.setCreatedAt(testTime); // Set createdAt first
+        accountEntity.setUpdatedAt(oldTime);
 
-        // When - converting to domain
-        Account domainAccount = accountEntity.toDomain();
+        // When - touching entity
+        accountEntity.touch();
 
-        // Then - domain account should have correct values
-        assertEquals(2L, domainAccount.getId());
-        assertEquals("7654321005", domainAccount.getAccountNumber().getValue());
-        assertEquals(new BigDecimal("1000.000"), domainAccount.getBalance().getAmount());
-        assertEquals(AccountStatus.PENDING, domainAccount.getStatus());
-        assertEquals(testTime, domainAccount.getCreatedAt());
-        assertEquals(testTime, domainAccount.getUpdatedAt());
-    }
-
-    @Test
-    void shouldUpdateFromDomainAccount() {
-        // Given - existing entity and updated domain account
-        accountEntity.setId(3L);
-        accountEntity.setAccountNumber("1111111003");
-        accountEntity.setBalance(new BigDecimal("500.000"));
-        accountEntity.setStatus(AccountStatus.PENDING.getCode());
-        accountEntity.setCreatedAt(testTime);
-        accountEntity.setUpdatedAt(testTime);
-
-        LocalDateTime laterTime = testTime.plusMinutes(10);
-        Account updatedDomainAccount = Account.reconstitute(
-            3L, 
-            AccountNumber.of("1111111003"),
-            Balance.of("750.250"),
-            AccountStatus.ACTIVE,
-            testTime,
-            laterTime,
-            null
-        );
-
-        // When - updating from domain
-        accountEntity.updateFromDomain(updatedDomainAccount);
-
-        // Then - mutable fields should be updated
-        assertEquals(new BigDecimal("750.250"), accountEntity.getBalance());
-        assertEquals(AccountStatus.ACTIVE.getCode(), accountEntity.getStatus());
-        assertEquals(laterTime, accountEntity.getUpdatedAt());
-        // Immutable fields should remain unchanged
-        assertEquals(3L, accountEntity.getId());
-        assertEquals("1111111003", accountEntity.getAccountNumber());
-        assertEquals(testTime, accountEntity.getCreatedAt());
+        // Then - updatedAt should be more recent
+        assertTrue(accountEntity.getUpdatedAt().isAfter(oldTime));
+        assertNotNull(accountEntity.getCreatedAt());
     }
 
     @Test
@@ -153,84 +122,93 @@ class AccountEntityTest {
     }
 
     @Test
-    void shouldHandleNullAccountNumberInCustomerExtraction() {
-        // Given - null account number
+    void shouldReturnNullForInvalidAccountNumber() {
+        // When - setting invalid account number
+        // TODO(aalhendi): do i want to override setters/getters to fail on null?
         accountEntity.setAccountNumber(null);
 
-        // When - extracting customer number
-        String customerNumber = accountEntity.getCustomerNumber();
+        // Then - customer number should be null
+        assertNull(accountEntity.getCustomerNumber());
 
-        // Then - should return null
-        assertNull(customerNumber);
+        // When - setting short account number
+        accountEntity.setAccountNumber("123");
+
+        // Then - customer number should be null
+        assertNull(accountEntity.getCustomerNumber());
     }
 
     @Test
-    void shouldHandleShortAccountNumberInCustomerExtraction() {
-        // Given - account number shorter than 7 characters
-        accountEntity.setAccountNumber("12345");
+    void shouldDetectActiveStatus() {
+        // Given - active account
+        accountEntity.setStatus(1);
 
-        // When - extracting customer number
-        String customerNumber = accountEntity.getCustomerNumber();
+        // When - checking if active
+        boolean isActive = accountEntity.isActive();
 
-        // Then - should return null (invalid format)
-        assertNull(customerNumber);
+        // Then - should be active
+        assertTrue(isActive);
     }
 
     @Test
-    void shouldImplementEqualsBasedOnAccountNumber() {
-        // Given - two entities with same account number
+    void shouldHandleEqualsAndHashCode() {
+        // Given - two entities with the same account number
         AccountEntity entity1 = new AccountEntity();
         entity1.setAccountNumber("1234567001");
-        
+
         AccountEntity entity2 = new AccountEntity();
         entity2.setAccountNumber("1234567001");
 
         AccountEntity entity3 = new AccountEntity();
         entity3.setAccountNumber("1234567002");
 
-        // Then - equals should be based on account number
+        // Then - entities with the same account number should be equal
         assertEquals(entity1, entity2);
-        assertNotEquals(entity1, entity3);
         assertEquals(entity1.hashCode(), entity2.hashCode());
+
+        // And - entities with different account numbers should not be equal
+        assertNotEquals(entity1, entity3);
+        assertNotEquals(entity1.hashCode(), entity3.hashCode());
     }
 
     @Test
-    void shouldHandleEqualsWithNullAccountNumber() {
+    void shouldHandleNullInEqualsAndHashCode() {
         // Given - entities with null account numbers
         AccountEntity entity1 = new AccountEntity();
         entity1.setAccountNumber(null);
-        
+
         AccountEntity entity2 = new AccountEntity();
         entity2.setAccountNumber(null);
 
         AccountEntity entity3 = new AccountEntity();
         entity3.setAccountNumber("1234567001");
 
-        // Then - should handle null comparisons properly
+        // Then - entities with null account numbers should be equal
         assertEquals(entity1, entity2);
+        assertEquals(entity1.hashCode(), entity2.hashCode());
+
+        // And - null should not equal non-null
         assertNotEquals(entity1, entity3);
-        assertNotEquals(entity3, entity1);
     }
 
     @Test
-    void shouldProvideToStringRepresentation() {
-        // Given - entity with data
+    void shouldHaveToStringRepresentation() {
+        // Given - populated entity
         accountEntity.setAccountNumber("1234567001");
-        accountEntity.setBalance(new BigDecimal("100.500"));
-        accountEntity.setStatus(1); // ACTIVE status code
+        accountEntity.setBalance(new BigDecimal("100.000"));
+        accountEntity.setStatus(1);
 
         // When - calling toString
-        String stringRepresentation = accountEntity.toString();
+        String toString = accountEntity.toString();
 
         // Then - should contain key information
-        assertNotNull(stringRepresentation);
-        assertTrue(stringRepresentation.contains("1234567001"));
-        assertTrue(stringRepresentation.contains("100.500"));
-        assertTrue(stringRepresentation.contains("AccountEntity"));
+        assertNotNull(toString);
+        assertTrue(toString.contains("AccountEntity"));
+        assertTrue(toString.contains("1234567001"));
+        assertTrue(toString.contains("100.000"));
     }
 
     @Test
-    void shouldCreateEntityWithParameterizedConstructor() {
+    void shouldCreateEntityWithAllFields() {
         // Given - constructor parameters
         String accountNumber = "1234567001";
         BigDecimal balance = new BigDecimal("500.000");
@@ -239,7 +217,7 @@ class AccountEntityTest {
         LocalDateTime updatedAt = testTime;
 
         // When - creating entity with constructor
-        AccountEntity entity = new AccountEntity(accountNumber, balance, status, createdAt, updatedAt, null);
+        AccountEntity entity = new AccountEntity(null, accountNumber, balance, status, createdAt, updatedAt);
 
         // Then - properties should be set correctly
         assertEquals(accountNumber, entity.getAccountNumber());
@@ -247,6 +225,5 @@ class AccountEntityTest {
         assertEquals(status, entity.getStatus());
         assertEquals(createdAt, entity.getCreatedAt());
         assertEquals(updatedAt, entity.getUpdatedAt());
-        assertNull(entity.getDeletedAt());
     }
 } 
