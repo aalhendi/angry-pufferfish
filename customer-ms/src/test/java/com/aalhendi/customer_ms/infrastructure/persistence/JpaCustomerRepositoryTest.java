@@ -34,10 +34,6 @@ class JpaCustomerRepositoryTest {
     @Autowired
     private JpaCustomerRepository repository;
 
-    private CustomerEntity testCustomer1;
-    private CustomerEntity testCustomer2;
-    private CustomerEntity testCustomer3;
-
     @BeforeEach
     void setUp() {
         // Clear any existing data
@@ -47,7 +43,13 @@ class JpaCustomerRepositoryTest {
         // Create test data with different customer types and statuses
         LocalDateTime now = LocalDateTime.now();
 
-        testCustomer1 = new CustomerEntity(
+        // Customer number
+        // Name
+        // National ID (12 chars)
+        // Customer type
+        // Address
+        // ACTIVE status
+        CustomerEntity testCustomer1 = new CustomerEntity(
                 null,
                 "1234567",          // Customer number
                 "John Doe",         // Name
@@ -59,7 +61,13 @@ class JpaCustomerRepositoryTest {
                 now
         );
 
-        testCustomer2 = new CustomerEntity(
+        // Customer number
+        // Name
+        // National ID (12 chars)
+        // Customer type
+        // Address
+        // INACTIVE status
+        CustomerEntity testCustomer2 = new CustomerEntity(
                 null,
                 "7654321",          // Customer number
                 "Jane Smith",       // Name
@@ -71,7 +79,13 @@ class JpaCustomerRepositoryTest {
                 now
         );
 
-        testCustomer3 = new CustomerEntity(
+        // Customer number
+        // Name
+        // National ID (12 chars)
+        // Customer type
+        // Address
+        // ACTIVE status
+        CustomerEntity testCustomer3 = new CustomerEntity(
                 null,
                 "9876543",          // Customer number
                 "W BANK",           // Name
@@ -205,10 +219,10 @@ class JpaCustomerRepositoryTest {
 
         // Then - should return matching customers
         assertEquals(1, johnsResults.size());
-        assertEquals("John Doe", johnsResults.get(0).getName());
+        assertEquals("John Doe", johnsResults.getFirst().getName());
 
         assertEquals(1, corpResults.size());
-        assertEquals("W BANK", corpResults.get(0).getName());
+        assertEquals("W BANK", corpResults.getFirst().getName());
 
         assertEquals(0, emptyResults.size());
     }

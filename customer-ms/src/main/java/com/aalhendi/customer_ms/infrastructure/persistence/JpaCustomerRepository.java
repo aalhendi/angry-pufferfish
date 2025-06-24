@@ -43,7 +43,7 @@ public interface JpaCustomerRepository extends JpaRepository<CustomerEntity, Lon
     boolean existsByCustomerNumber(String customerNumber);
     
     /**
-     * Check if national ID already exists.
+     * Check if the national ID already exists.
      */
     boolean existsByNationalId(String nationalId);
     

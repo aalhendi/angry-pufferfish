@@ -6,22 +6,9 @@ package com.aalhendi.customer_ms.domain.valueobjects;
  */
 public enum CustomerType {
 
-    RETAIL("RETAIL"),
-    CORPORATE("CORPORATE"),
-    INVESTMENT("INVESTMENT");
-
-    private final String value;
-
-    CustomerType(String value) {
-        this.value = value;
-    }
-
-    /**
-     * Gets the string value for this customer type.
-     */
-    public String getValue() {
-        return value;
-    }
+    RETAIL,
+    CORPORATE,
+    INVESTMENT;
 
     /**
      * Creates a CustomerType from a string value.
@@ -31,12 +18,12 @@ public enum CustomerType {
             throw new IllegalArgumentException("Customer type value cannot be null");
         }
 
-        for (CustomerType type : CustomerType.values()) {
-            if (type.value.equalsIgnoreCase(value)) {
-                return type;
-            }
+        String upperVal = value.trim().toUpperCase();
+        try {
+            return CustomerType.valueOf(upperVal);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid customer type: " + value);
         }
-        throw new IllegalArgumentException("Invalid customer type: " + value);
     }
 
     /**
@@ -47,7 +34,7 @@ public enum CustomerType {
     }
 
     /**
-     * Checks if this customer type is investment.
+     * Checks if this customer type is an investment.
      */
     public boolean isInvestment() {
         return this == INVESTMENT;
