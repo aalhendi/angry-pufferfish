@@ -4,6 +4,7 @@ import com.aalhendi.account_ms.domain.entities.Account;
 import com.aalhendi.account_ms.domain.entities.NewAccount;
 import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
 import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
+import com.aalhendi.account_ms.domain.valueobjects.AccountType;
 import com.aalhendi.account_ms.domain.valueobjects.Balance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +32,13 @@ class AccountEntityTest {
     void shouldCreateAccountEntityWithBasicProperties() {
         // Given - basic account data
         String expectedAccountNumber = "1234567001";
+        String expectedAccountType = "SAVING";
         BigDecimal expectedBalance = new BigDecimal("100.500");
         Integer expectedStatus = 1;
 
         // When - setting properties
         accountEntity.setAccountNumber(expectedAccountNumber);
+        accountEntity.setAccountType(expectedAccountType);
         accountEntity.setBalance(expectedBalance);
         accountEntity.setStatus(expectedStatus);
         accountEntity.setCreatedAt(testTime);
@@ -43,6 +46,7 @@ class AccountEntityTest {
 
         // Then - properties should be retrievable
         assertEquals(expectedAccountNumber, accountEntity.getAccountNumber());
+        assertEquals(expectedAccountType, accountEntity.getAccountType());
         assertEquals(expectedBalance, accountEntity.getBalance());
         assertEquals(expectedStatus, accountEntity.getStatus());
         assertEquals(testTime, accountEntity.getCreatedAt());
@@ -53,16 +57,18 @@ class AccountEntityTest {
     void shouldCreateEntityFromConstructor() {
         // Given - entity data
         String accountNumber = "1234567001";
+        String accountType = "SAVING";
         BigDecimal balance = new BigDecimal("250.750");
         Integer status = 1; // ACTIVE
         LocalDateTime createdAt = testTime;
         LocalDateTime updatedAt = testTime;
 
         // When - creating an entity from constructor
-        AccountEntity entity = new AccountEntity(null, accountNumber, balance, status, createdAt, updatedAt);
+        AccountEntity entity = new AccountEntity(null, accountNumber, accountType, balance, status, createdAt, updatedAt);
 
         // Then - should have correct properties
         assertEquals(accountNumber, entity.getAccountNumber());
+        assertEquals(accountType, entity.getAccountType());
         assertEquals(balance, entity.getBalance());
         assertEquals(status, entity.getStatus());
         assertEquals(createdAt, entity.getCreatedAt());
@@ -72,12 +78,13 @@ class AccountEntityTest {
     @Test
     void shouldCreateFromDomainObject() {
         // Given - domain object
-        NewAccount newAccount = NewAccount.create(new AccountNumber("1234567001"));
+        NewAccount newAccount = NewAccount.create(new AccountNumber("1234567001"), AccountType.SAVING);
         // We would need to "save" the newAccount to get an Account. We don't have a DB, so we will cheat.
         Account account = Account.reconstitute(1L,
                 newAccount.getAccountNumber(),
-                newAccount.getBalance(),
+                newAccount.getAccountType(),
                 newAccount.getStatus(),
+                newAccount.getBalance(),
                 newAccount.getCreatedAt(),
                 newAccount.getUpdatedAt());
         account.activate(); // Activate first
@@ -88,6 +95,7 @@ class AccountEntityTest {
 
         // Then - should match domain properties
         assertEquals("1234567001", entity.getAccountNumber());
+        assertEquals("SAVING", entity.getAccountType());
         assertEquals(new BigDecimal("500.000"), entity.getBalance());
         assertEquals(AccountStatus.ACTIVE.getCode(), entity.getStatus());
         assertNotNull(entity.getCreatedAt());
@@ -194,6 +202,7 @@ class AccountEntityTest {
     void shouldHaveToStringRepresentation() {
         // Given - populated entity
         accountEntity.setAccountNumber("1234567001");
+        accountEntity.setAccountType("SAVING");
         accountEntity.setBalance(new BigDecimal("100.000"));
         accountEntity.setStatus(1);
 
@@ -204,6 +213,7 @@ class AccountEntityTest {
         assertNotNull(toString);
         assertTrue(toString.contains("AccountEntity"));
         assertTrue(toString.contains("1234567001"));
+        assertTrue(toString.contains("SAVING"));
         assertTrue(toString.contains("100.000"));
     }
 
@@ -211,16 +221,18 @@ class AccountEntityTest {
     void shouldCreateEntityWithAllFields() {
         // Given - constructor parameters
         String accountNumber = "1234567001";
+        String accountType = "SAVING";
         BigDecimal balance = new BigDecimal("500.000");
         Integer status = 1;
         LocalDateTime createdAt = testTime;
         LocalDateTime updatedAt = testTime;
 
         // When - creating entity with constructor
-        AccountEntity entity = new AccountEntity(null, accountNumber, balance, status, createdAt, updatedAt);
+        AccountEntity entity = new AccountEntity(null, accountNumber, accountType, balance, status, createdAt, updatedAt);
 
         // Then - properties should be set correctly
         assertEquals(accountNumber, entity.getAccountNumber());
+        assertEquals(accountType, entity.getAccountType());
         assertEquals(balance, entity.getBalance());
         assertEquals(status, entity.getStatus());
         assertEquals(createdAt, entity.getCreatedAt());

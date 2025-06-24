@@ -12,6 +12,9 @@
             <column name="account_number" type="VARCHAR(10)">
                 <constraints nullable="false" unique="true" />
             </column>
+            <column name="account_type" type="VARCHAR(20)">
+                <constraints nullable="false" />
+            </column>
             <column name="balance" type="DECIMAL(19,3)">
                 <constraints nullable="false"/>
             </column>

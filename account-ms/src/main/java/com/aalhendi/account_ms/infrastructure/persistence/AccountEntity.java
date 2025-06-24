@@ -3,6 +3,7 @@ package com.aalhendi.account_ms.infrastructure.persistence;
 import com.aalhendi.account_ms.domain.entities.Account;
 import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
 import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
+import com.aalhendi.account_ms.domain.valueobjects.AccountType;
 import com.aalhendi.account_ms.domain.valueobjects.Balance;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SoftDelete;
@@ -30,6 +31,9 @@ public class AccountEntity implements Persistable<Long> {
     @Column(name = "account_number", unique = true, nullable = false, length = 10)
     private String accountNumber;
 
+    @Column(name = "account_type", nullable = false, length = 20)
+    private String accountType;
+
     @Column(name = "balance", precision = 19, scale = 3, nullable = false)
     private BigDecimal balance;
 
@@ -51,10 +55,11 @@ public class AccountEntity implements Persistable<Long> {
     /**
      * Constructor with all fields.
      */
-    public AccountEntity(Long id, String accountNumber, BigDecimal balance, Integer status,
-                         LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public AccountEntity(Long id, String accountNumber, String accountType,
+                         BigDecimal balance, Integer status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.accountNumber = accountNumber;
+        this.accountType = accountType;
         this.balance = balance;
         this.status = status;
         this.createdAt = createdAt;
@@ -75,6 +80,15 @@ public class AccountEntity implements Persistable<Long> {
 
     public void setAccountNumber(String accountNumber) {
         this.accountNumber = accountNumber;
+    }
+
+
+    public String getAccountType() {
+        return accountType;
+    }
+
+    public void setAccountType(String accountType) {
+        this.accountType = accountType;
     }
 
     public BigDecimal getBalance() {
@@ -142,8 +156,9 @@ public class AccountEntity implements Persistable<Long> {
         return Account.reconstitute(
                 this.id,
                 new AccountNumber(this.accountNumber),
-                new Balance(this.balance),
+                AccountType.fromString(this.accountType),
                 AccountStatus.fromCode(this.status),
+                new Balance(this.balance),
                 this.createdAt,
                 this.updatedAt
         );
@@ -156,6 +171,7 @@ public class AccountEntity implements Persistable<Long> {
         AccountEntity entity = new AccountEntity();
         entity.setId(domainAccount.getId());
         entity.setAccountNumber(domainAccount.getAccountNumber().value());
+        entity.setAccountType(domainAccount.getAccountType().name());
         entity.setBalance(domainAccount.getBalance().value());
         entity.setStatus(domainAccount.getStatus().getCode());
         entity.setCreatedAt(domainAccount.getCreatedAt());
@@ -181,6 +197,7 @@ public class AccountEntity implements Persistable<Long> {
         return "AccountEntity[" +
                 "id=" + id +
                 ", accountNumber='" + accountNumber +
+                ", accountType='" + accountType +
                 ", balance=" + balance +
                 ", status=" + status +
                 ", createdAt=" + createdAt +

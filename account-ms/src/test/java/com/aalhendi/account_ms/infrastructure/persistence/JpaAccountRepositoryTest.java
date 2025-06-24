@@ -49,6 +49,7 @@ class JpaAccountRepositoryTest {
         AccountEntity testAccount1 = new AccountEntity(
                 null,
                 "1234567001",  // Customer 1234567, Account 001
+                "SAVING",
                 new BigDecimal("100.000"),
                 1,  // ACTIVE
                 now,
@@ -60,6 +61,7 @@ class JpaAccountRepositoryTest {
         AccountEntity testAccount2 = new AccountEntity(
                 null,
                 "1234567002",  // Customer 1234567, Account 002
+                "INVESTMENT",
                 new BigDecimal("250.500"),
                 0,  // PENDING
                 now,
@@ -71,6 +73,7 @@ class JpaAccountRepositoryTest {
         AccountEntity testAccount3 = new AccountEntity(
                 null,
                 "7654321001",  // Customer 7654321, Account 001
+                "SALARY",
                 new BigDecimal("500.750"),
                 1,  // ACTIVE
                 now,

@@ -2,6 +2,7 @@ package com.aalhendi.account_ms.domain.entities;
 
 import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
 import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
+import com.aalhendi.account_ms.domain.valueobjects.AccountType;
 import com.aalhendi.account_ms.domain.valueobjects.Balance;
 
 import java.time.LocalDateTime;
@@ -17,19 +18,19 @@ public final class Account extends AbstractAccount {
     /**
      * Private constructor for creating accounts.
      */
-    private Account(Long id, AccountNumber accountNumber, Balance balance, AccountStatus status,
-                    LocalDateTime createdAt, LocalDateTime updatedAt) {
-        super(accountNumber, balance, status, createdAt, updatedAt);
+    private Account(Long id, AccountNumber accountNumber, AccountType accountType,
+                    Balance balance, AccountStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        super(accountNumber, accountType, balance, status, createdAt, updatedAt);
         this.id = Objects.requireNonNull(id, "ID cannot be null");
     }
 
     /**
      * Reconstitutes an account from persistence (for loading from a database).
      */
-    public static Account reconstitute(Long id, AccountNumber accountNumber, Balance balance,
-                                       AccountStatus status, LocalDateTime createdAt,
-                                       LocalDateTime updatedAt) {
-        return new Account(id, accountNumber, balance, status, createdAt, updatedAt);
+    public static Account reconstitute(Long id, AccountNumber accountNumber, 
+                                       AccountType accountType, AccountStatus status, Balance balance,
+                                       LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new Account(id, accountNumber, accountType, balance, status, createdAt, updatedAt);
     }
 
     /**
@@ -44,6 +45,7 @@ public final class Account extends AbstractAccount {
         return "Account{" +
                 "id=" + id +
                 ", accountNumber=" + getAccountNumber() +
+                ", accountType=" + getAccountType() +
                 ", balance=" + getBalance() +
                 ", status=" + getStatus() +
                 ", createdAt=" + getCreatedAt() +

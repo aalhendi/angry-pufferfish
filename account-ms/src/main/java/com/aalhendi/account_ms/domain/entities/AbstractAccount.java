@@ -2,6 +2,7 @@ package com.aalhendi.account_ms.domain.entities;
 
 import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
 import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
+import com.aalhendi.account_ms.domain.valueobjects.AccountType;
 import com.aalhendi.account_ms.domain.valueobjects.Balance;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import java.util.Objects;
 public abstract sealed class AbstractAccount permits Account, NewAccount {
 
     private final AccountNumber accountNumber;
+    private final AccountType accountType;
     private Balance balance;
     private AccountStatus status;
     private final LocalDateTime createdAt;
@@ -22,9 +24,10 @@ public abstract sealed class AbstractAccount permits Account, NewAccount {
     /**
      * Protected constructor for creating accounts.
      */
-    protected AbstractAccount(AccountNumber accountNumber, Balance balance, AccountStatus status,
-                              LocalDateTime createdAt, LocalDateTime updatedAt) {
+    protected AbstractAccount(AccountNumber accountNumber, AccountType accountType,
+                              Balance balance, AccountStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.accountNumber = Objects.requireNonNull(accountNumber, "Account number cannot be null");
+        this.accountType = Objects.requireNonNull(accountType, "Account type cannot be null");
         this.balance = Objects.requireNonNull(balance, "Balance cannot be null");
         this.status = Objects.requireNonNull(status, "Status cannot be null");
         this.createdAt = Objects.requireNonNull(createdAt, "Created at cannot be null");
@@ -33,6 +36,10 @@ public abstract sealed class AbstractAccount permits Account, NewAccount {
 
     public AccountNumber getAccountNumber() {
         return accountNumber;
+    }
+
+    public AccountType getAccountType() {
+        return accountType;
     }
 
     public Balance getBalance() {
@@ -150,6 +157,7 @@ public abstract sealed class AbstractAccount permits Account, NewAccount {
     public String toString() {
         return "Account{" +
                 "accountNumber=" + accountNumber +
+                ", accountType=" + accountType +
                 ", balance=" + balance +
                 ", status=" + status +
                 ", createdAt=" + createdAt +
