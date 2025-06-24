@@ -105,4 +105,24 @@ public record Balance(BigDecimal value) {
         }
         return this.value.compareTo(other.value) == 0;
     }
+
+    /**
+     * Checks if this balance is less than or equal to another.
+     */
+    public boolean isLessThanOrEqualTo(Balance other) {
+        if (Objects.isNull(other)) {
+            throw new IllegalArgumentException("Cannot compare with null balance");
+        }
+        return this.value.compareTo(other.value) <= 0;
+    }
+
+    /**
+     * Checks if this balance is greater than or equal to another.
+     */
+    public boolean isGreaterThanOrEqualTo(Balance other) {
+        if (Objects.isNull(other)) {
+            throw new IllegalArgumentException("Cannot compare with null balance");
+        }
+        return this.value.compareTo(other.value) >= 0;
+    }
 } 

@@ -1,6 +1,7 @@
 package com.aalhendi.account_ms.infrastructure.persistence;
 
 import com.aalhendi.account_ms.domain.entities.Account;
+import com.aalhendi.account_ms.domain.entities.NewAccount;
 import com.aalhendi.account_ms.domain.valueobjects.AccountNumber;
 import com.aalhendi.account_ms.domain.valueobjects.AccountStatus;
 import com.aalhendi.account_ms.domain.valueobjects.AccountType;
@@ -170,6 +171,21 @@ public class AccountEntity implements Persistable<Long> {
     public static AccountEntity fromDomain(Account domainAccount) {
         AccountEntity entity = new AccountEntity();
         entity.setId(domainAccount.getId());
+        entity.setAccountNumber(domainAccount.getAccountNumber().value());
+        entity.setAccountType(domainAccount.getAccountType().name());
+        entity.setBalance(domainAccount.getBalance().value());
+        entity.setStatus(domainAccount.getStatus().getCode());
+        entity.setCreatedAt(domainAccount.getCreatedAt());
+        entity.setUpdatedAt(domainAccount.getUpdatedAt());
+        return entity;
+    }
+
+    /**
+     * Creates a JPA entity from a domain NewAccount object.
+     */
+    public static AccountEntity fromDomain(NewAccount domainAccount) {
+        AccountEntity entity = new AccountEntity();
+        entity.setId(null); // new accounts don't have IDs yet
         entity.setAccountNumber(domainAccount.getAccountNumber().value());
         entity.setAccountType(domainAccount.getAccountType().name());
         entity.setBalance(domainAccount.getBalance().value());
