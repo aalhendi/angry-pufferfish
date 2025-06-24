@@ -5,6 +5,7 @@
 - account microservice on 8080
 - customer microservice on 8081
 - PostgreSQL instance on 5432 with 2 dbs (one for each service)
+- Kafka on 9092 with UI on 8082
 
 Db migrations are managed through Liquibase.
 
@@ -38,9 +39,8 @@ cd customer-ms
 ### 3. Verify Setup
 
 - Account MS Health: http://localhost:8080/actuator/health (/info, /metrics)
-- Liquibase Status: http://localhost:8080/actuator/liquibase
-
-## TODO(aalhendi): discuss DB schema here? or somewhere else?
+- Customer MS Health: http://localhost:8081/actuator/health (/info, /metrics)
+- Kafka UI: http://localhost:8082
 
 ## Configuration
 

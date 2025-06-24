@@ -81,4 +81,9 @@ public interface JpaCustomerRepository extends JpaRepository<CustomerEntity, Lon
     @Query("SELECT c FROM CustomerEntity c WHERE LOWER(c.address) LIKE LOWER(CONCAT('%', :addressPart, '%'))")
     List<CustomerEntity> findByAddressContaining(@Param("addressPart") String addressPart);
     
+    /**
+     * Soft delete a customer by customer number.
+     */
+    void deleteByCustomerNumber(String customerNumber);
+    
 } 

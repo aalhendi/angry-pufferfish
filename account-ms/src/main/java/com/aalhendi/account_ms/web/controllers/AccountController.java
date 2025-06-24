@@ -1,7 +1,11 @@
 package com.aalhendi.account_ms.web.controllers;
 
 import com.aalhendi.account_ms.domain.services.AccountService;
+import com.aalhendi.account_ms.domain.entities.Account;
+import com.aalhendi.account_ms.domain.valueobjects.AccountType;
 import com.aalhendi.account_ms.web.dtos.*;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,8 +32,11 @@ public class AccountController {
      * @return the created account with HTTP 201 status
      */
     @PostMapping
-    public ResponseEntity<AccountResponse> createAccount(@RequestBody CreateAccountRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody CreateAccountRequest request) {
+        AccountType accountType = AccountType.fromString(request.getAccountType());
+        Account account = accountService.createAccount(request.getCustomerNumber(), accountType);
+        AccountResponse response = AccountResponse.from(account);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

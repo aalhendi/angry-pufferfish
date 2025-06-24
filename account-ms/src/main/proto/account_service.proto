@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package com.aalhendi.account;
+
+option java_package = "com.aalhendi.account.grpc";
+option java_outer_classname = "AccountServiceProto";
+option java_multiple_files = true;
+
+// Account service for inter-service communication
+service AccountService {
+  // Get accounts by customer number
+  rpc GetAccountsByCustomer(GetAccountsByCustomerRequest) returns (GetAccountsByCustomerResponse);
+  
+  // Check if customer has active accounts (for customer deletion)
+  rpc HasActiveAccounts(HasActiveAccountsRequest) returns (HasActiveAccountsResponse);
+  
+  // Get account summary for customer
+  rpc GetAccountSummary(GetAccountSummaryRequest) returns (GetAccountSummaryResponse);
+}
+
+// Request to get accounts by customer
+message GetAccountsByCustomerRequest {
+  string customer_number = 1;
+}
+
+// Response with customer accounts
+message GetAccountsByCustomerResponse {
+  repeated AccountInfo accounts = 1;
+  int32 total_count = 2;
+}
+
+// Account information
+message AccountInfo {
+  string account_number = 1;
+  string customer_number = 2;
+  string account_type = 3; // SAVING, INVESTMENT, SALARY
+  string status = 4; // ACTIVE, SUSPENDED, CLOSED
+  string balance = 5; // String representation of decimal
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+// Request to check active accounts
+message HasActiveAccountsRequest {
+  string customer_number = 1;
+}
+
+// Response with active accounts check
+message HasActiveAccountsResponse {
+  bool has_active_accounts = 1;
+  int32 active_account_count = 2;
+  repeated string active_account_numbers = 3;
+}
+
+// Request for account summary
+message GetAccountSummaryRequest {
+  string customer_number = 1;
+}
+
+// Response with account summary
+message GetAccountSummaryResponse {
+  string customer_number = 1;
+  int32 total_accounts = 2;
+  int32 active_accounts = 3;
+  string total_balance = 4; // String representation of decimal
+  bool has_salary_account = 5;
+  repeated AccountInfo account_details = 6;
+} 

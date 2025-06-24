@@ -5,6 +5,7 @@ import com.aalhendi.customer_ms.domain.valueobjects.CustomerStatus;
 import com.aalhendi.customer_ms.domain.valueobjects.CustomerType;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Domain service for customer operations.
@@ -21,6 +22,11 @@ public interface CustomerService {
      * Retrieves a customer by their customer number.
      */
     Customer getCustomer(String customerNumber);
+
+    /**
+     * Finds a customer by their customer number.
+     */
+    Optional<Customer> findByCustomerNumber(String customerNumber);
 
     /**
      * Updates customer information.

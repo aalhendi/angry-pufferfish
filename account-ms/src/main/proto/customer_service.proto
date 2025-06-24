@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package com.aalhendi.customer;
+
+option java_package = "com.aalhendi.customer.grpc";
+option java_outer_classname = "CustomerServiceProto";
+option java_multiple_files = true;
+
+// Customer service for inter-service communication
+service CustomerService {
+  // Get customer details by customer number
+  rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse);
+  
+  // Validate if customer exists and is active
+  rpc ValidateCustomer(ValidateCustomerRequest) returns (ValidateCustomerResponse);
+  
+  // Check if customer can have additional accounts
+  rpc CheckAccountLimit(CheckAccountLimitRequest) returns (CheckAccountLimitResponse);
+}
+
+// Request to get customer details
+message GetCustomerRequest {
+  string customer_number = 1;
+}
+
+// Response with customer details
+message GetCustomerResponse {
+  string customer_number = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string national_id = 5;
+  string customer_type = 6; // RETAIL, CORPORATE, INVESTMENT
+  string status = 7; // PENDING, ACTIVE, SUSPENDED, FROZEN, CLOSED
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+// Request to validate customer
+message ValidateCustomerRequest {
+  string customer_number = 1;
+}
+
+// Response with validation result
+message ValidateCustomerResponse {
+  bool is_valid = 1;
+  bool is_active = 2;
+  string customer_type = 3;
+  string status = 4;
+  string error_message = 5; // Set if validation fails
+}
+
+// Request to check account limit
+message CheckAccountLimitRequest {
+  string customer_number = 1;
+  string account_type = 2; // SAVING, INVESTMENT, SALARY
+}
+
+// Response with account limit check
+message CheckAccountLimitResponse {
+  bool can_create_account = 1;
+  int32 current_account_count = 2;
+  int32 max_account_limit = 3;
+  bool already_has_salary_account = 4;
+  string error_message = 5; // Set if limit exceeded
+} 
