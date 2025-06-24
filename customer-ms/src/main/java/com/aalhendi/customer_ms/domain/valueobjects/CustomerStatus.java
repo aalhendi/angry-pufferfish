@@ -1,5 +1,7 @@
 package com.aalhendi.customer_ms.domain.valueobjects;
 
+import java.util.Objects;
+
 /**
  * Customer status enumeration.
  * Represents the various states a customer can be in.
@@ -35,6 +37,22 @@ public enum CustomerStatus {
             }
         }
         throw new IllegalArgumentException("Invalid customer status code: " + code);
+    }
+
+    /**
+     * Creates a CustomerStatus from a string value.
+     */
+    public static CustomerStatus fromValue(String value) {
+        if (Objects.isNull(value)) {
+            throw new IllegalArgumentException("Customer status value cannot be null");
+        }
+
+        String upperVal = value.trim().toUpperCase();
+        try {
+            return CustomerStatus.valueOf(upperVal);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid customer status: " + value);
+        }
     }
 
     /**

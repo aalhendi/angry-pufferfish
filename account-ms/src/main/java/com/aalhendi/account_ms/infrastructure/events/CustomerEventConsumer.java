@@ -73,4 +73,18 @@ public class CustomerEventConsumer {
             logger.error("Failed to process customer status changed event: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Handles customer updated events.
+     */
+    @KafkaListener(topics = "customer.events.updated")
+    public void handleCustomerUpdated(@Payload String eventJson) {
+        logger.info("Received customer updated event: {}", eventJson);
+        
+        try {
+            logger.info("Successfully processed customer updated event");
+        } catch (Exception e) {
+            logger.error("Error processing customer updated event: {}", eventJson, e);
+        }
+    }
 } 

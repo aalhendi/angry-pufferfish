@@ -17,7 +17,7 @@ public class GrpcClientConfig {
     @Value("${grpc.client.account-service.host:localhost}")
     private String accountServiceHost;
 
-    @Value("${grpc.client.account-service.port:9092}")
+    @Value("${grpc.client.account-service.port:9093}")
     private int accountServicePort;
 
     /**

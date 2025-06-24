@@ -56,6 +56,14 @@ public class CustomerRepositoryImpl implements CustomerRepository {
     }
 
     @Override
+    public List<Customer> findByNameContainingIgnoreCase(String name) {
+        return jpaRepository.findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(CustomerEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean existsByCustomerNumber(String customerNumber) {
         return jpaRepository.existsByCustomerNumber(customerNumber);
     }

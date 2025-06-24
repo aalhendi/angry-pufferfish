@@ -53,6 +53,14 @@ public interface CustomerRepository {
     List<Customer> findByNameContaining(String name);
 
     /**
+     * Searches customers by name (case-insensitive partial match).
+     *
+     * @param name the name to search for
+     * @return list of matching customers
+     */
+    List<Customer> findByNameContainingIgnoreCase(String name);
+
+    /**
      * Checks if a customer exists by customer number.
      *
      * @param customerNumber the customer number

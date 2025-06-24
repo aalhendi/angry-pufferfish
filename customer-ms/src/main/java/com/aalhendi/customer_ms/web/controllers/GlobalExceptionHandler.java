@@ -35,10 +35,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         logger.warn("Business exception occurred: {}", ex.getMessage());
         
+        List<String> details = new ArrayList<>();
+        
+        String errorCode = ex.getErrorCode();
+        String message = ex.getMessage();
+        
+        if ("VALIDATION_ERROR".equals(errorCode)) {
+            if (message.contains("National ID must be exactly 12 digits")) {
+                details.add("National ID must be exactly 12 digits");
+            } else if (message.contains("Customer type must be")) {
+                details.add("Customer type must be RETAIL, CORPORATE, or INVESTMENT");
+            } else if (message.contains("Status must be")) {
+                details.add("Status must be PENDING, ACTIVE, SUSPENDED, FROZEN, or CLOSED");
+            } else if (message.contains("Invalid value") && message.contains("status")) {
+                details.add("Status must be PENDING, ACTIVE, SUSPENDED, FROZEN, or CLOSED");
+            }
+        }
+        
         ErrorResponse errorResponse = new ErrorResponse(
             ex.getErrorCode(),
             ex.getMessage(),
-            List.of()
+            details
         );
         
         return ResponseEntity.status(ex.getHttpStatus()).body(errorResponse);

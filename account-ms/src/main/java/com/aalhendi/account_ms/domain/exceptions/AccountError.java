@@ -37,7 +37,7 @@ public enum AccountError {
     INSUFFICIENT_FUNDS(
             HttpStatus.BAD_REQUEST,
             "INSUFFICIENT_FUNDS",
-            "Insufficient funds in account '%s'. Available: %s, Required: %s"
+            "Account '%s' has insufficient funds. Current balance: %s, requested: %s"
     ),
 
     // 400 Bad Request - Invalid State errors
@@ -61,8 +61,8 @@ public enum AccountError {
 
     CANNOT_CLOSE_ACCOUNT_WITH_BALANCE(
             HttpStatus.BAD_REQUEST,
-            "INVALID_ACCOUNT_STATE",
-            "Cannot close account '%s' with remaining balance %s"
+            "CANNOT_CLOSE_ACCOUNT_WITH_BALANCE",
+            "Cannot close account '%s' with non-zero balance: %s"
     ),
 
     // 400 Bad Request - Invalid Data errors
@@ -106,6 +106,18 @@ public enum AccountError {
             HttpStatus.BAD_REQUEST,
             "INVALID_ACCOUNT_DATA",
             "Required field '%s' is missing"
+    ),
+
+    INVALID_FIELD_VALUE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_FIELD_VALUE",
+            "Invalid value '%s' for field '%s'"
+    ),
+
+    VALIDATION_ERROR(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            "Invalid value '%s' for field '%s'"
     );
 
     private final HttpStatus httpStatus;

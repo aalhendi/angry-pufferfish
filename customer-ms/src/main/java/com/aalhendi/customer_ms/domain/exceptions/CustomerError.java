@@ -55,8 +55,8 @@ public enum CustomerError {
     // 400 Bad Request - Invalid Data errors
     INVALID_NATIONAL_ID_FORMAT(
             HttpStatus.BAD_REQUEST,
-            "INVALID_CUSTOMER_DATA",
-            "Invalid national_id '%s': must be exactly 12 digits"
+            "VALIDATION_ERROR",
+            "National ID must be exactly 12 digits"
     ),
 
     INVALID_CUSTOMER_NUMBER_FORMAT(
@@ -79,14 +79,26 @@ public enum CustomerError {
 
     MISSING_REQUIRED_FIELD(
             HttpStatus.BAD_REQUEST,
-            "INVALID_CUSTOMER_DATA",
+            "VALIDATION_ERROR",
             "Required field '%s' is missing"
+    ),
+
+    NO_UPDATE_FIELDS_PROVIDED(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            "At least one field must be provided for update"
     ),
 
     INVALID_CUSTOMER_TYPE(
             HttpStatus.BAD_REQUEST,
             "INVALID_CUSTOMER_DATA",
-            "Invalid customer type '%s': must be one of %s"
+            "Customer type must be RETAIL, CORPORATE, or INVESTMENT"
+    ),
+
+    VALIDATION_ERROR(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            "Invalid value '%s' for field '%s'"
     );
 
     private final HttpStatus httpStatus;

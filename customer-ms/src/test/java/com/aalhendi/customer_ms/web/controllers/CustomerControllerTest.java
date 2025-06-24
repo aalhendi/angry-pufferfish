@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -183,7 +184,7 @@ class CustomerControllerTest {
         @DisplayName("Should return customer when found")
         void shouldReturnCustomerWhenFound() throws Exception {
             // Given
-            when(customerService.getCustomer(anyString())).thenReturn(testCustomer);
+            when(customerService.findByCustomerNumber(anyString())).thenReturn(Optional.of(testCustomer));
 
             // When & Then
             mockMvc.perform(get("/api/customers/1234567"))
@@ -192,15 +193,15 @@ class CustomerControllerTest {
                     .andExpect(jsonPath("$.name").value("John Doe"))
                     .andExpect(jsonPath("$.status").value("ACTIVE"));
 
-            verify(customerService).getCustomer("1234567");
+            verify(customerService).findByCustomerNumber("1234567");
         }
 
         @Test
         @DisplayName("Should return 404 when customer not found")
         void shouldReturn404WhenCustomerNotFound() throws Exception {
             // Given
-            when(customerService.getCustomer(anyString()))
-                    .thenThrow(new BusinessException(CustomerError.CUSTOMER_NOT_FOUND, "9999999"));
+            when(customerService.findByCustomerNumber(anyString()))
+                    .thenReturn(Optional.empty());
 
             // When & Then
             mockMvc.perform(get("/api/customers/9999999"))
@@ -213,7 +214,7 @@ class CustomerControllerTest {
         @DisplayName("Should return 400 when customer number format is invalid")
         void shouldReturn400WhenCustomerNumberFormatIsInvalid() throws Exception {
             // Given
-            when(customerService.getCustomer("123"))
+            when(customerService.findByCustomerNumber("123"))
                     .thenThrow(new BusinessException(CustomerError.INVALID_CUSTOMER_NUMBER_FORMAT, "123"));
 
             // When & Then
@@ -238,7 +239,7 @@ class CustomerControllerTest {
                     new CustomerName("Jane Smith"),
                     new NationalId("307061980328"),
                     CustomerType.CORPORATE,
-                    new Address("OMAR BEN AL KHATTAB STREET, ARRAYA TOWER, FLOOR 01-13, BLOCK 7, SHARQ"),
+                    new Address("OMAR BEN AL KHATTAB STREET, AVENUES MALL, FLOOR 01-13, BLOCK 7, SHARQ"),
                     CustomerStatus.ACTIVE,
                     LocalDateTime.now(),
                     LocalDateTime.now()

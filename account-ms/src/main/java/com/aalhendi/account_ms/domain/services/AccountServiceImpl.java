@@ -13,12 +13,17 @@ import com.aalhendi.account_ms.infrastructure.grpc.CustomerServiceClient;
 import com.aalhendi.customer.grpc.ValidateCustomerResponse;
 import com.aalhendi.customer.grpc.CheckAccountLimitResponse;
 import com.aalhendi.account_ms.domain.events.AccountCreatedEvent;
+import com.aalhendi.account_ms.domain.events.AccountStatusChangedEvent;
+import com.aalhendi.account_ms.domain.events.AccountTransactionEvent;
+import com.aalhendi.account_ms.domain.events.AccountClosedEvent;
 import com.aalhendi.account_ms.infrastructure.events.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 /**
  * Implementation of AccountService.
@@ -99,6 +104,7 @@ public class AccountServiceImpl implements AccountService {
         List<String> existingSerials = accountRepository.findExistingSerialNumbers(customerNumber);
         
         // Find the next available serial number (001-010)
+        // TODO(aalhendi): this is not the best way to do this, but it's a start
         for (int serial = 1; serial <= 10; serial++) {
             String serialStr = String.format("%03d", serial);
             if (!existingSerials.contains(serialStr)) {
@@ -113,7 +119,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(readOnly = true)
     public Optional<Account> getAccount(String accountNumber) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return accountRepository.findByAccountNumber(accountNumber);
     }
 
     @Override
@@ -124,21 +130,206 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account updateAccountStatus(String accountNumber, AccountStatus status) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (Objects.isNull(accountNumber) || accountNumber.trim().isEmpty()) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "account_number"
+            );
+        }
+        
+        Account account = getAccount(accountNumber)
+                .orElseThrow(() -> new BusinessException(
+                    AccountError.ACCOUNT_NOT_FOUND, accountNumber
+                ));
+        
+        AccountStatus previousStatus = account.getStatus();
+        
+        switch (status) {
+            case ACTIVE -> account.activate();
+            case SUSPENDED -> account.suspend();
+            case CLOSED -> {
+                if (!account.getBalance().isEqualTo(Balance.ZERO)) {
+                    throw new BusinessException(
+                        AccountError.CANNOT_CLOSE_ACCOUNT_WITH_BALANCE, 
+                        accountNumber, account.getBalance().value()
+                    );
+                }
+                account.close();
+                
+                // Publish account closed event
+                AccountClosedEvent closedEvent = new AccountClosedEvent(
+                    account.getAccountNumber().value(),
+                    account.getAccountNumber().customerNumber(),
+                    account.getAccountType(),
+                    "Account closed via status update",
+                    1L
+                );
+                
+                eventPublisher.publish(closedEvent);
+            }
+        }
+        
+        Account updatedAccount = accountRepository.save(account);
+        
+        // Publish status changed event (unless it was closed, as we already published the closed event)
+        if (status != AccountStatus.CLOSED) {
+            AccountStatusChangedEvent event = new AccountStatusChangedEvent(
+                updatedAccount.getAccountNumber().value(),
+                updatedAccount.getAccountNumber().customerNumber(),
+                previousStatus.name(),
+                updatedAccount.getStatus().name(),
+                "Status updated via API",
+                1L
+            );
+            
+            eventPublisher.publish(event);
+        }
+        
+        return updatedAccount;
     }
 
     @Override
     public Account creditAccount(String accountNumber, Balance amount) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (Objects.isNull(accountNumber) || accountNumber.trim().isEmpty()) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "account_number"
+            );
+        }
+        
+        if (Objects.isNull(amount)) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "amount"
+            );
+        }
+        
+        if (amount.value().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(
+                AccountError.NEGATIVE_AMOUNT, amount.value()
+            );
+        }
+        
+        Account account = getAccount(accountNumber)
+                .orElseThrow(() -> new BusinessException(
+                    AccountError.ACCOUNT_NOT_FOUND, accountNumber
+                ));
+        
+        if (!account.isActive()) {
+            throw new BusinessException(
+                AccountError.ACCOUNT_NOT_ACTIVE, accountNumber, account.getStatus().name()
+            );
+        }
+        
+        BigDecimal previousBalance = account.getBalance().value();
+        account.credit(amount);
+        Account updatedAccount = accountRepository.save(account);
+        
+        // Publish transaction event
+        AccountTransactionEvent event = new AccountTransactionEvent(
+            updatedAccount.getAccountNumber().value(),
+            updatedAccount.getAccountNumber().customerNumber(),
+            "CREDIT",
+            amount.value(),
+            previousBalance,
+            updatedAccount.getBalance().value(),
+            "Credit transaction via API",
+            1L
+        );
+        
+        eventPublisher.publish(event);
+        
+        return updatedAccount;
     }
 
     @Override
     public Account debitAccount(String accountNumber, Balance amount) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (Objects.isNull(accountNumber) || accountNumber.trim().isEmpty()) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "account_number"
+            );
+        }
+        
+        if (Objects.isNull(amount)) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "amount"
+            );
+        }
+        
+        if (amount.value().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(
+                AccountError.NEGATIVE_AMOUNT, amount.value()
+            );
+        }
+        
+        Account account = getAccount(accountNumber)
+                .orElseThrow(() -> new BusinessException(
+                    AccountError.ACCOUNT_NOT_FOUND, accountNumber
+                ));
+        
+        if (!account.isActive()) {
+            throw new BusinessException(
+                AccountError.ACCOUNT_NOT_ACTIVE, accountNumber, account.getStatus().name()
+            );
+        }
+        
+        if (account.getBalance().isLessThan(amount)) {
+            throw new BusinessException(
+                AccountError.INSUFFICIENT_FUNDS, accountNumber, 
+                account.getBalance().value(), amount.value()
+            );
+        }
+        
+        BigDecimal previousBalance = account.getBalance().value();
+        account.debit(amount);
+        Account updatedAccount = accountRepository.save(account);
+        
+        // Publish transaction event
+        AccountTransactionEvent event = new AccountTransactionEvent(
+            updatedAccount.getAccountNumber().value(),
+            updatedAccount.getAccountNumber().customerNumber(),
+            "DEBIT",
+            amount.value(),
+            previousBalance,
+            updatedAccount.getBalance().value(),
+            "Debit transaction via API",
+            1L
+        );
+        
+        eventPublisher.publish(event);
+        
+        return updatedAccount;
     }
 
     @Override
     public void closeAccount(String accountNumber) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (Objects.isNull(accountNumber) || accountNumber.trim().isEmpty()) {
+            throw new BusinessException(
+                AccountError.MISSING_REQUIRED_FIELD, "account_number"
+            );
+        }
+        
+        Account account = getAccount(accountNumber)
+                .orElseThrow(() -> new BusinessException(
+                    AccountError.ACCOUNT_NOT_FOUND, accountNumber
+                ));
+        
+        if (!account.getBalance().isEqualTo(Balance.ZERO)) {
+            throw new BusinessException(
+                AccountError.CANNOT_CLOSE_ACCOUNT_WITH_BALANCE, 
+                accountNumber, account.getBalance().value()
+            );
+        }
+        
+        account.close();
+        accountRepository.save(account);
+        
+        // Publish account closed event
+        AccountClosedEvent event = new AccountClosedEvent(
+            account.getAccountNumber().value(),
+            account.getAccountNumber().customerNumber(),
+            account.getAccountType(),
+            "Account closed via API",
+            1L
+        );
+        
+        eventPublisher.publish(event);
     }
 } 

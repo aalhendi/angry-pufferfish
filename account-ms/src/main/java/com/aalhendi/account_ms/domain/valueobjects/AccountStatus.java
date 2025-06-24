@@ -1,5 +1,7 @@
 package com.aalhendi.account_ms.domain.valueobjects;
 
+import java.util.Objects;
+
 /**
  * Account status enumeration.
  * Represents the various states an account can be in.
@@ -35,6 +37,22 @@ public enum AccountStatus {
             }
         }
         throw new IllegalArgumentException("Invalid account status code: " + code);
+    }
+
+    /**
+     * Creates an AccountStatus from a string value.
+     */
+    public static AccountStatus fromValue(String value) {
+        if (Objects.isNull(value)) {
+            throw new IllegalArgumentException("Account status value cannot be null");
+        }
+
+        String upperVal = value.trim().toUpperCase();
+        try {
+            return AccountStatus.valueOf(upperVal);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid account status: " + value);
+        }
     }
 
     /**

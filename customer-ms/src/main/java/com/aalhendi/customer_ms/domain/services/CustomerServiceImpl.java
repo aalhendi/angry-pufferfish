@@ -5,11 +5,16 @@ import com.aalhendi.customer_ms.domain.entities.NewCustomer;
 import com.aalhendi.customer_ms.domain.repositories.CustomerRepository;
 import com.aalhendi.customer_ms.domain.valueobjects.*;
 import com.aalhendi.customer_ms.domain.events.CustomerCreatedEvent;
+import com.aalhendi.customer_ms.domain.events.CustomerUpdatedEvent;
+import com.aalhendi.customer_ms.domain.events.CustomerStatusChangedEvent;
+import com.aalhendi.customer_ms.domain.exceptions.BusinessException;
+import com.aalhendi.customer_ms.domain.exceptions.CustomerError;
 import com.aalhendi.customer_ms.infrastructure.events.DomainEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -30,35 +35,57 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer createCustomer(String name, String nationalId, CustomerType customerType, String address) {
-        String customerNumberValue = generateCustomerNumber();
-        CustomerNumber customerNumber = new CustomerNumber(customerNumberValue);
-        CustomerName customerName = new CustomerName(name);
-        NationalId nationalIdVO = new NationalId(nationalId);
-        Address addressVO = new Address(address);
-        
-        NewCustomer newCustomer = NewCustomer.create(
-            customerNumber,
-            customerName,
-            nationalIdVO,
-            customerType,
-            addressVO
-        );
-        
-        Customer savedCustomer = customerRepository.save(newCustomer);
-        
-        CustomerCreatedEvent event = new CustomerCreatedEvent(
-            customerNumberValue,
-            name,
-            nationalId,
-            customerType,
-            address,
-            savedCustomer.getStatus().name(),
-            1L // Initial version
-        );
-        
-        eventPublisher.publish(event);
-        
-        return savedCustomer;
+        try {
+            String customerNumberValue = generateCustomerNumber();
+            CustomerNumber customerNumber = new CustomerNumber(customerNumberValue);
+            CustomerName customerName = new CustomerName(name);
+            
+            NationalId nationalIdVO;
+            // TODO(aalhendi): this is sloppy... but time is running out
+            try {
+                nationalIdVO = new NationalId(nationalId);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(CustomerError.INVALID_NATIONAL_ID_FORMAT);
+            }
+            
+            Address addressVO = new Address(address);
+            
+            NewCustomer newCustomer = NewCustomer.create(
+                customerNumber,
+                customerName,
+                nationalIdVO,
+                customerType,
+                addressVO
+            );
+            
+            Customer savedCustomer = customerRepository.save(newCustomer);
+            
+            CustomerCreatedEvent event = new CustomerCreatedEvent(
+                customerNumberValue,
+                name,
+                nationalId,
+                customerType,
+                address,
+                savedCustomer.getStatus().name(),
+                1L
+            );
+            
+            eventPublisher.publish(event);
+            
+            return savedCustomer;
+        } catch (IllegalArgumentException e) {
+            // Handle value object validation errors
+            String message = e.getMessage();
+            if (message.contains("National ID")) {
+                throw new BusinessException(CustomerError.INVALID_NATIONAL_ID_FORMAT);
+            } else if (message.contains("name")) {
+                throw new BusinessException(CustomerError.MISSING_REQUIRED_FIELD, "name");
+            } else if (message.contains("address")) {
+                throw new BusinessException(CustomerError.MISSING_REQUIRED_FIELD, "address");
+            }
+            // Re-throw if we don't know how to handle it
+            throw e;
+        }
     }
 
     /**
@@ -73,7 +100,10 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional(readOnly = true)
     public Customer getCustomer(String customerNumber) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return customerRepository.findByCustomerNumber(customerNumber)
+                .orElseThrow(() -> new BusinessException(
+                    CustomerError.CUSTOMER_NOT_FOUND, customerNumber
+                ));
     }
 
     @Override
@@ -84,17 +114,97 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer updateCustomer(String customerNumber, String name, String address, CustomerType customerType) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Customer customer = getCustomer(customerNumber);
+        
+        StringBuilder changes = new StringBuilder();
+        
+        if (Objects.nonNull(name) && !name.trim().isEmpty()) {
+            String oldName = customer.getName().value();
+            customer.updateName(new CustomerName(name));
+            if (!oldName.equals(name)) {
+                changes.append("name: '").append(oldName).append("' -> '").append(name).append("'; ");
+            }
+        }
+        
+        if (Objects.nonNull(address) && !address.trim().isEmpty()) {
+            String oldAddress = customer.getAddress().value();
+            customer.updateAddress(new Address(address));
+            if (!oldAddress.equals(address)) {
+                changes.append("address: '").append(oldAddress).append("' -> '").append(address).append("'; ");
+            }
+        }
+        
+        if (Objects.nonNull(customerType)) {
+            CustomerType oldType = customer.getCustomerType();
+            customer.updateCustomerType(customerType);
+            if (!oldType.equals(customerType)) {
+                changes.append("type: '").append(oldType).append("' -> '").append(customerType).append("'; ");
+            }
+        }
+        
+        if (changes.length() == 0) {
+            throw new BusinessException(
+                CustomerError.MISSING_REQUIRED_FIELD, "at least one field to update"
+            );
+        }
+        
+        Customer updatedCustomer = customerRepository.save(customer);
+        
+        // Publish customer updated event
+        CustomerUpdatedEvent event = new CustomerUpdatedEvent(
+            updatedCustomer.getCustomerNumber().value(),
+            updatedCustomer.getName().value(),
+            updatedCustomer.getNationalId().value(),
+            updatedCustomer.getCustomerType(),
+            updatedCustomer.getAddress().value(),
+            updatedCustomer.getStatus().name(),
+            changes.toString().trim(),
+            1L // TODO(aalhendi): implement proper versioning
+        );
+        
+        eventPublisher.publish(event);
+        
+        return updatedCustomer;
     }
 
     @Override
     public Customer updateCustomerStatus(String customerNumber, CustomerStatus status) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Customer customer = getCustomer(customerNumber);
+        
+        CustomerStatus previousStatus = customer.getStatus();
+        
+        switch (status) {
+            case ACTIVE -> customer.activate();
+            case SUSPENDED -> customer.suspend();
+            case FROZEN -> customer.freeze();
+            case CLOSED -> customer.close();
+        }
+        
+        Customer updatedCustomer = customerRepository.save(customer);
+        
+        // Publish customer status changed event
+        CustomerStatusChangedEvent event = new CustomerStatusChangedEvent(
+            updatedCustomer.getCustomerNumber().value(),
+            previousStatus.name(),
+            updatedCustomer.getStatus().name(),
+            "Status updated via API",
+            1L
+        );
+        
+        eventPublisher.publish(event);
+        
+        return updatedCustomer;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Customer> searchCustomersByName(String name) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        if (name == null || name.trim().isEmpty()) {
+            throw new BusinessException(
+                CustomerError.MISSING_REQUIRED_FIELD, "name"
+            );
+        }
+        
+        return customerRepository.findByNameContainingIgnoreCase(name.trim());
     }
 } 

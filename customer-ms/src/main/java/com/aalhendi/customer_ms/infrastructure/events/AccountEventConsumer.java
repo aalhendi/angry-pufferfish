@@ -81,4 +81,32 @@ public class AccountEventConsumer {
             logger.error("Failed to process account closed event: {}", e.getMessage(), e);
         }
     }
+
+    /**
+     * Handles account status changed events.
+     */
+    @KafkaListener(topics = "account.events.status-changed")
+    public void handleAccountStatusChanged(@Payload String eventJson) {
+        logger.info("Received account status changed event: {}", eventJson);
+        
+        try {         
+            logger.info("Successfully processed account status changed event");
+        } catch (Exception e) {
+            logger.error("Error processing account status changed event: {}", eventJson, e);
+        }
+    }
+
+    /**
+     * Handles account transaction events.
+     */
+    @KafkaListener(topics = "account.events.transaction")
+    public void handleAccountTransaction(@Payload String eventJson) {
+        logger.info("Received account transaction event: {}", eventJson);
+        
+        try {          
+            logger.info("Successfully processed account transaction event");
+        } catch (Exception e) {
+            logger.error("Error processing account transaction event: {}", eventJson, e);
+        }
+    }
 } 

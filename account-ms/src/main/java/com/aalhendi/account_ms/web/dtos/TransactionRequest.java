@@ -15,7 +15,7 @@ public class TransactionRequest {
 
     @JsonProperty("amount")
     @NotNull(message = "Amount is required")
-    @DecimalMin(value = "0.001", message = "Amount must be greater than 0")
+    @DecimalMin(value = "0.001", message = "Amount must be positive")
     private BigDecimal amount;
 
     @JsonProperty("description")
